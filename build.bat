@@ -1,0 +1,1 @@
+g++ -o build/main.exe main.cpp -I./include/ -lgdi32 -ld3dcompiler -ldwmapi -ld3d11
