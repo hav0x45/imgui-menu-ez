@@ -10,11 +10,11 @@ static UINT                     g_ResizeWidth = 0, g_ResizeHeight = 0;
 static ID3D11RenderTargetView*  g_mainRenderTargetView = nullptr;
 
 // Forward declarations of helper functions
-bool CreateDeviceD3D(HWND hWnd);
+bool CreateDeviceD3D(HWND windowHandle);
 void CleanupDeviceD3D();
 void CreateRenderTarget();
 void CleanupRenderTarget();
-LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+LRESULT WINAPI WndProc(HWND windowHandle, UINT msg, WPARAM wParam, LPARAM lParam);
 
 // Main code
 int main(int, char**)
@@ -39,10 +39,10 @@ int main(int, char**)
     RegisterClassExW(&windowClass);
 
     // Create window handle
-    HWND window = CreateWindowW(windowClass.lpszClassName, L"ImGui DirectX11 Window", WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, nullptr, nullptr, windowClass.hInstance, nullptr);
+    HWND windowHandle = CreateWindowW(windowClass.lpszClassName, L"ImGui DirectX11 Window", WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, nullptr, nullptr, windowClass.hInstance, nullptr);
 
     // Initialize Direct3D
-    if (!CreateDeviceD3D(window))
+    if (!CreateDeviceD3D(windowHandle))
     {
         CleanupDeviceD3D();
         UnregisterClassW(windowClass.lpszClassName, windowClass.hInstance);
@@ -50,8 +50,8 @@ int main(int, char**)
     }
 
     // Show the window
-    ShowWindow(window, SW_SHOWDEFAULT);
-    UpdateWindow(window);
+    ShowWindow(windowHandle, SW_SHOWDEFAULT);
+    UpdateWindow(windowHandle);
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -68,7 +68,7 @@ int main(int, char**)
     ImGui::StyleColorsDark();
 
     // Setup Platform/Renderer backends
-    ImGui_ImplWin32_Init(window);
+    ImGui_ImplWin32_Init(windowHandle);
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
 
@@ -76,6 +76,8 @@ int main(int, char**)
     bool showMenu = true;
     // bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
+    MessageBoxA(windowHandle, "Text!", "Caption!", 0);
 
     // Main loop
     bool done = false;
@@ -140,7 +142,7 @@ int main(int, char**)
     ImGui::DestroyContext();
 
     CleanupDeviceD3D();
-    DestroyWindow(window);
+    DestroyWindow(windowHandle);
     UnregisterClassW(windowClass.lpszClassName, windowClass.hInstance);
 
     return 0;
@@ -148,7 +150,7 @@ int main(int, char**)
 
 // Helper functions
 
-bool CreateDeviceD3D(HWND window)
+bool CreateDeviceD3D(HWND windowHandle)
 {
     // Setup swap chain
     DXGI_SWAP_CHAIN_DESC sd;
@@ -161,7 +163,7 @@ bool CreateDeviceD3D(HWND window)
     sd.BufferDesc.RefreshRate.Denominator = 1;
     sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
     sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    sd.OutputWindow = window;
+    sd.OutputWindow = windowHandle;
     sd.SampleDesc.Count = 1;
     sd.SampleDesc.Quality = 0;
     sd.Windowed = TRUE;
@@ -213,10 +215,11 @@ void CleanupRenderTarget()
 // Forward declare message handler from imgui_impl_win32.cpp
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+LRESULT WINAPI WndProc(HWND windowHandle, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
+    if (ImGui_ImplWin32_WndProcHandler(windowHandle, msg, wParam, lParam)) {
         return true;
+    }
 
     switch (msg)
     {
@@ -235,5 +238,5 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         return 0;
     }
 
-    return DefWindowProcW(hWnd, msg, wParam, lParam);
+    return DefWindowProcW(windowHandle, msg, wParam, lParam);
 }
