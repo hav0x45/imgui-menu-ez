@@ -19,26 +19,47 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 // Main code
 int main(int, char**)
 {
-    // Create application window
-    WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"ImGui Example", nullptr };
-    ::RegisterClassExW(&wc);
-    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"Dear ImGui DirectX11 Example", WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, nullptr, nullptr, wc.hInstance, nullptr);
+    // Create window class
+    WNDCLASSEXW windowClass = {
+        sizeof(windowClass),
+        CS_CLASSDC,
+        WndProc,
+        0L,
+        0L,
+        GetModuleHandle(nullptr),
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        L"ImGui Window",
+        nullptr
+    };
+
+    // Register window class
+    RegisterClassExW(&windowClass);
+
+    // Create window handle
+    HWND window = CreateWindowW(windowClass.lpszClassName, L"ImGui DirectX11 Window", WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, nullptr, nullptr, windowClass.hInstance, nullptr);
 
     // Initialize Direct3D
-    if (!CreateDeviceD3D(hwnd))
+    if (!CreateDeviceD3D(window))
     {
         CleanupDeviceD3D();
-        ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
+        UnregisterClassW(windowClass.lpszClassName, windowClass.hInstance);
         return 1;
     }
 
     // Show the window
-    ::ShowWindow(hwnd, SW_SHOWDEFAULT);
-    ::UpdateWindow(hwnd);
+    ShowWindow(window, SW_SHOWDEFAULT);
+    UpdateWindow(window);
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
+
+    // Create ImGui Context
     ImGui::CreateContext();
+
+    // Create ImGui IO
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
@@ -47,36 +68,38 @@ int main(int, char**)
     ImGui::StyleColorsDark();
 
     // Setup Platform/Renderer backends
-    ImGui_ImplWin32_Init(hwnd);
+    ImGui_ImplWin32_Init(window);
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
 
     // Our state
-    bool show_demo_window = true;
-    bool show_another_window = false;
+    bool showMenu = true;
+    // bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     // Main loop
     bool done = false;
+    
     while (!done)
     {
         // Poll and handle messages (inputs, window resize, etc.)
         // See the WndProc() function below for our to dispatch events to the Win32 backend.
         MSG msg;
-        while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
+        while (PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
         {
-            ::TranslateMessage(&msg);
-            ::DispatchMessage(&msg);
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
             if (msg.message == WM_QUIT)
                 done = true;
         }
-        if (done)
+        if (done) {
             break;
+        }            
 
         // Handle window being minimized or screen locked
         if (g_SwapChainOccluded && g_pSwapChain->Present(0, DXGI_PRESENT_TEST) == DXGI_STATUS_OCCLUDED)
         {
-            ::Sleep(10);
+            Sleep(10);
             continue;
         }
         g_SwapChainOccluded = false;
@@ -90,15 +113,14 @@ int main(int, char**)
             CreateRenderTarget();
         }
 
-        // Start the Dear ImGui frame
+        // Start the ImGui frames
         ImGui_ImplDX11_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
         ImGui::SetNextWindowSize(ImVec2(500, 500));
-        if (ImGui::Begin("My Title")) {
-
-        } ImGui::End();
+        ImGui::Begin("My Title");
+        ImGui::End();
 
         // Rendering
         ImGui::Render();
@@ -108,8 +130,8 @@ int main(int, char**)
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
         // Present
-        HRESULT hr = g_pSwapChain->Present(1, 0);   // Present with vsync
-        g_SwapChainOccluded = (hr == DXGI_STATUS_OCCLUDED);
+        HRESULT hresult = g_pSwapChain->Present(1, 0);   // Present with vsync
+        g_SwapChainOccluded = (hresult == DXGI_STATUS_OCCLUDED);
     }
 
     // Cleanup
@@ -118,15 +140,15 @@ int main(int, char**)
     ImGui::DestroyContext();
 
     CleanupDeviceD3D();
-    ::DestroyWindow(hwnd);
-    ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
+    DestroyWindow(window);
+    UnregisterClassW(windowClass.lpszClassName, windowClass.hInstance);
 
     return 0;
 }
 
 // Helper functions
 
-bool CreateDeviceD3D(HWND hWnd)
+bool CreateDeviceD3D(HWND window)
 {
     // Setup swap chain
     DXGI_SWAP_CHAIN_DESC sd;
@@ -139,7 +161,7 @@ bool CreateDeviceD3D(HWND hWnd)
     sd.BufferDesc.RefreshRate.Denominator = 1;
     sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
     sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    sd.OutputWindow = hWnd;
+    sd.OutputWindow = window;
     sd.SampleDesc.Count = 1;
     sd.SampleDesc.Quality = 0;
     sd.Windowed = TRUE;
@@ -149,11 +171,19 @@ bool CreateDeviceD3D(HWND hWnd)
     //createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
     D3D_FEATURE_LEVEL featureLevel;
     const D3D_FEATURE_LEVEL featureLevelArray[2] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0, };
-    HRESULT res = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, createDeviceFlags, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext);
-    if (res == DXGI_ERROR_UNSUPPORTED) // Try high-performance WARP software driver if hardware is not available.
-        res = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, createDeviceFlags, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext);
-    if (res != S_OK)
+
+    // Create HRESULT from D3D11CreateDeviceAndSwapChain
+    // Or just Create Device and store it in hresult
+    HRESULT hresult = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, createDeviceFlags, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext);
+
+    // Try high-performance WARP software driver if hardware is not available.
+    if (hresult == DXGI_ERROR_UNSUPPORTED) {
+        hresult = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, createDeviceFlags, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext);
+    } 
+        
+    if (hresult != S_OK) {
         return false;
+    }
 
     CreateRenderTarget();
     return true;
@@ -201,8 +231,9 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             return 0;
         break;
     case WM_DESTROY:
-        ::PostQuitMessage(0);
+        PostQuitMessage(0);
         return 0;
     }
-    return ::DefWindowProcW(hWnd, msg, wParam, lParam);
+
+    return DefWindowProcW(hWnd, msg, wParam, lParam);
 }
